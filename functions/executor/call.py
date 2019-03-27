@@ -17,6 +17,8 @@ import sys
 import uuid
 import zmq
 
+import user_library
+
 from anna.lattices import *
 from include.functions_pb2 import *
 from include.shared import *
@@ -100,11 +102,12 @@ def exec_dag_function(pusher_cache, kvs, trigger, function, schedule):
 
 
 def _process_args(arg_list):
-    return list(map(lambda v: get_serializer(v.type).load(v.body), arg_list))
+    return [get_serializer(arg.type).load(arg.body) for arg in arg_list]
 
 
 def _exec_func(kvs, func, args):
-    func_args = ()
+    # First argument is the fluent library that user code can call.
+    func_args = (user_library.FluentUserLibrary(kvs))
 
     # resolve any references to KVS objects
     for arg in args:
