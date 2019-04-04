@@ -115,7 +115,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
         if exec_socket in socks and socks[exec_socket] == zmq.POLLIN:
             work_start = time.time()
-            exec_function(exec_socket, client, status)
+            exec_function(exec_socket, client, ip, thread_id, status)
 
             elapsed = time.time() - work_start
             event_occupancy['func_exec'] += elapsed
@@ -159,7 +159,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
             fname = trigger.target_function
 
-            exec_dag_function(pusher_cache, client, trigger,
+            exec_dag_function(pusher_cache, client, iop, thread_id, trigger,
                     pinned_functions[fname], queue[fname][trigger.id])
 
             elapsed = time.time() - work_start

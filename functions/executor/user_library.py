@@ -39,13 +39,16 @@ class AbstractFluentUserLibrary:
         raise NotImplementedError
 
 class FluentUserLibrary(AbstractFluentUserLibrary):
-    RECV_INBOX_PORT = 5500  # hopefully this is free? unsure if this should be declared elsewhere
 
-    def __init__(self, anna_client):
+    # ip: Executor IP.
+    # tid: Executor thread ID.
+    # anna_client: The Anna client, used for interfacing with the kvs.
+    def __init__(self, ip, tid, anna_client):
         self.ctx = zmq.Context()
-        self.send_socket_cache = SocketCache(self.ctx, zmq.REQ)
+        self.send_socket_cache = SocketCache(self.ctx, zmq.PUSH)
 
-        # The Anna client, used for interfacing with the kvs.
+        self.executor_ip = ip
+        self.executor_tid = tid
         self.client = anna_client
 
         # Threadsafe queue to serve as this node's inbox.
@@ -63,12 +66,14 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
     def get(self, ref, ltype):
         return self.client.get(ref, ltype)
 
-    # Provisional precondition:
-    # dest is an IP address of another function executor, resolvable by ZMQ.
-    # (If/when we change to node identifiers, we'll need to add an address resolution function.)
+    # dest is currently (IP string, thread id int) of destination executor.
     def send(self, dest, bytestr):
-        socket = self.send_socket_cache.get(dest)
-        socket.send_pyobj((dest, bytestr))
+        ip, tid = dest
+        dest_addr = server_utils._get_user_msg_inbox_addr(ip, tid)
+        sender = (self.executor_ip, self.executor_tid)
+
+        socket = self.send_socket_cache.get(dest_addr)
+        socket.send_pyobj((sender, bytestr))
 
     def recv(self):
         res = []
@@ -85,9 +90,10 @@ class FluentUserLibrary(AbstractFluentUserLibrary):
     # and stores the messages in an inbox.
     def _recv_inbox_listener(self):
         # Socket for receiving send() messages from other nodes.
-        recv_inbox_socket = self.ctx.socket.(zmq.DEALER)
-        recv_inbox_socket.bind(server_utils.BIND_ADDR_TEMPLATE % (RECV_INBOX_PORT))
+        recv_inbox_socket = self.ctx.socket.(zmq.PULL)
+        recv_inbox_socket.bind(server_utils.BIND_ADDR_TEMPLATE % (RECV_INBOX_PORT + self.executor_tid))
 
         while True:
             (sender, msg) = recv_inbox_socket.recv_pyobj(0, copy=True)  # Blocking.
             self.recv_inbox.put((sender, msg))
+

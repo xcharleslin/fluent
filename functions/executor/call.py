@@ -26,7 +26,7 @@ from include.serializer import *
 from include import server_utils as sutils
 from . import utils
 
-def exec_function(exec_socket, kvs, status):
+def exec_function(exec_socket, kvs, ip, tid, status):
     call = FunctionCall()
     call.ParseFromString(exec_socket.recv())
     logging.info('Received call for ' + call.name)
@@ -56,6 +56,7 @@ def exec_function(exec_socket, kvs, status):
     resp.response_id = obj_id
 
     exec_socket.send(resp.SerializeToString())
+    user_library.FluentUserLibrary(ip, tid, kvs)
     result = _exec_func(kvs, f, fargs)
     result = serialize_val(result)
 
@@ -63,7 +64,7 @@ def exec_function(exec_socket, kvs, status):
     kvs.put(obj_id, result_lattice)
 
 
-def exec_dag_function(pusher_cache, kvs, trigger, function, schedule):
+def exec_dag_function(pusher_cache, kvs, ip, tid, trigger, function, schedule):
     fname = trigger.target_function
     logging.info('Executing function %s for DAG %s (ID %d).' %
             (schedule.dag.name, fname, trigger.id))
@@ -71,7 +72,8 @@ def exec_dag_function(pusher_cache, kvs, trigger, function, schedule):
     fargs = list(schedule.arguments[fname].args) + list(trigger.arguments.args)
     fargs = _process_args(fargs)
 
-    result = _exec_func(kvs, function, fargs)
+    user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
+    result = _exec_func(function, fargs, user_lib)
 
     result_triggers = []
 
@@ -105,9 +107,9 @@ def _process_args(arg_list):
     return [get_serializer(arg.type).load(arg.body) for arg in arg_list]
 
 
-def _exec_func(kvs, func, args):
+def _exec_func(func, args, user_lib):
     # First argument is the fluent library that user code can call.
-    func_args = (user_library.FluentUserLibrary(kvs))
+    func_args = (user_lib)
 
     # resolve any references to KVS objects
     for arg in args:
