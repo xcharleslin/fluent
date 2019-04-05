@@ -159,7 +159,7 @@ def executor(ip, mgmt_ip, schedulers, thread_id):
 
             fname = trigger.target_function
 
-            exec_dag_function(pusher_cache, client, iop, thread_id, trigger,
+            exec_dag_function(pusher_cache, client, ip, thread_id, trigger,
                     pinned_functions[fname], queue[fname][trigger.id])
 
             elapsed = time.time() - work_start

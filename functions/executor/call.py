@@ -57,7 +57,7 @@ def exec_function(exec_socket, kvs, ip, tid, status):
 
     exec_socket.send(resp.SerializeToString())
     user_library.FluentUserLibrary(ip, tid, kvs)
-    result = _exec_func(kvs, f, fargs)
+    result = _exec_func(f, fargs, user_library)
     result = serialize_val(result)
 
     result_lattice = LWWPairLattice(generate_timestamp(0), result)
