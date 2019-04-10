@@ -56,8 +56,8 @@ def exec_function(exec_socket, kvs, ip, tid, status):
     resp.response_id = obj_id
 
     exec_socket.send(resp.SerializeToString())
-    user_library.FluentUserLibrary(ip, tid, kvs)
-    result = _exec_func(f, fargs, user_library)
+    user_lib = user_library.FluentUserLibrary(ip, tid, kvs)
+    result = _exec_func(f, fargs, user_lib)
     result = serialize_val(result)
 
     result_lattice = LWWPairLattice(generate_timestamp(0), result)
@@ -114,7 +114,7 @@ def _exec_func(func, args, user_lib):
     # resolve any references to KVS objects
     for arg in args:
         if isinstance(arg, FluentReference):
-            func_args += (_resolve_ref(arg, kvs),)
+            func_args += (_resolve_ref(arg, user_lib.anna_client),)
         else:
             func_args += (arg,)
 
